@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Contact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "email", "phone", "company"],
+  "properties": {
+    "name": { "type": ["string", "null"] },
+    "email": {
+      "type": ["string", "null"],
+      "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"
+    },
+    "phone": {
+      "type": ["string", "null"],
+      "pattern": "^\\+?[0-9]{7,15}$"
+    },
+    "company": { "type": ["string", "null"] }
+  }
+}
