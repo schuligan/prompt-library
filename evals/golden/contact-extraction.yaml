@@ -1,0 +1,58 @@
+# A/B golden set: the SAME inputs and expectations are run against two prompt
+# variants. This is the core demonstration of prompt regression / A-B testing.
+#
+# - variant v1 (baseline) tends to drop null keys and wrap output in a fence.
+# - variant v2 (hardened) emits strict JSON-only with all keys present.
+#
+# Two scorers run per example:
+#   * json_schema  — is it parseable, JSON-only, and schema-valid?
+#   * json_fields  — are the actual extracted values correct?
+
+task: contact-extraction
+schema: contact.schema.json
+
+variants:
+  - name: contact-extraction-v1-baseline
+    prompt: prompts/extraction/contact-extraction-v1-baseline.prompt.md
+  - name: contact-extraction-v2-hardened
+    prompt: prompts/extraction/contact-extraction-v2-hardened.prompt.md
+
+cases:
+  - id: full-contact
+    input:
+      text: "Please contact Dana at dana@acme.io or call (415) 555-0100."
+    checks:
+      - scorer: json_schema
+        schema: contact.schema.json
+      - scorer: json_fields
+        expected:
+          name: Dana
+          email: dana@acme.io
+          phone: "4155550100"
+          company: null
+
+  - id: email-only
+    input:
+      text: "You can reach Morgan via morgan@example.org."
+    checks:
+      - scorer: json_schema
+        schema: contact.schema.json
+      - scorer: json_fields
+        expected:
+          name: Morgan
+          email: morgan@example.org
+          phone: null
+          company: null
+
+  - id: phone-with-formatting
+    input:
+      text: "Call Riley on +44 20 7946 0991 anytime."
+    checks:
+      - scorer: json_schema
+        schema: contact.schema.json
+      - scorer: json_fields
+        expected:
+          name: Riley
+          email: null
+          phone: "+442079460991"
+          company: null

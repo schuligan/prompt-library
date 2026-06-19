@@ -1,0 +1,43 @@
+# Single-variant golden set for the intent classifier. Demonstrates
+# json_schema + json_fields scoring on a classification prompt, including the
+# important "unknown" escape-hatch case.
+
+task: intent-classifier
+schema: sentiment.schema.json
+
+variants:
+  - name: intent-classifier
+    prompt: prompts/classification/intent-classifier.prompt.md
+
+cases:
+  - id: track
+    input:
+      message: "Where is my order, it still hasn't shipped?"
+    checks:
+      - scorer: json_fields
+        expected:
+          label: track_order
+
+  - id: cancel
+    input:
+      message: "I want to cancel my order please."
+    checks:
+      - scorer: json_fields
+        expected:
+          label: cancel_order
+
+  - id: refund
+    input:
+      message: "How do I get a refund for a return?"
+    checks:
+      - scorer: json_fields
+        expected:
+          label: return_or_refund
+
+  - id: out-of-scope
+    input:
+      message: "What's the weather like in Toronto today?"
+    checks:
+      - scorer: json_fields
+        expected:
+          label: unknown
