@@ -1,5 +1,9 @@
 # prompt-library
 
+[![ci](https://github.com/schuligan/prompt-library/actions/workflows/ci.yml/badge.svg)](https://github.com/schuligan/prompt-library/actions/workflows/ci.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![python](https://img.shields.io/badge/python-3.11+-3776AB.svg)](https://www.python.org/)
+
 A curated, **versioned** library of production-minded system prompts — plus a
 tiny **offline eval harness** that regression-tests them. Prompts are treated as
 code: they have versions, a "why it works" rationale, golden inputs, and scorers
