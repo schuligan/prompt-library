@@ -274,3 +274,7 @@ as versioned artifacts with a rationale and a regression suite, not as throwaway
 strings. The prompts and examples are generic and synthetic; nothing here is tied
 to any employer or proprietary system. Use, fork, and adapt freely under the MIT
 license.
+
+## Origin
+
+This is a **clean-room, generic version** of tooling I build and use locally for real operational and process work. The internal originals stay private; this public version is sanitized — synthetic data only, no proprietary logic — and generalized so anyone (including me) can reuse it via [Claude Code](https://claude.com/claude-code). Built and maintained AI-assisted.
