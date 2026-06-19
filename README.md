@@ -23,8 +23,12 @@ This repo is a small, honest answer to that:
    scores the output (exact-match / regex / JSON-schema-valid / field-accuracy /
    keyword), and prints a scoreboard — including an **A/B comparison** that
    declares a winner and says why.
-3. Everything runs **offline against a deterministic mock model**, so `pytest`
-   and the demo work in CI with no API key.
+3. **A prompt improver** (`python cli.py improve`) that takes a raw / weak prompt
+   — or a block of free text pasted from an inbox or notes — diagnoses it against
+   the same prompt-engineering rubric the library teaches, rewrites it into a
+   structured prompt, and explains every change.
+4. Everything runs **offline against a deterministic mock / rule-based path**, so
+   `pytest` and the demos work in CI with no API key.
 
 ## How the eval flow works
 
@@ -68,6 +72,9 @@ pytest -q
 
 # Regenerate the prompt catalog
 python cli.py index
+
+# Diagnose and rewrite a weak prompt (offline, rule-based)
+python cli.py improve "pull out the contact details from this email"
 ```
 
 By default everything uses the **MockModel** — deterministic, offline, no key.
@@ -101,17 +108,82 @@ under-specified prompt; `contact-extraction-v2-hardened` adds a null policy, a
 "JSON only" guard, and a worked example. The harness shows, with numbers, that
 those prompt-engineering changes — and nothing else — produce the win.
 
+## Prompt improver
+
+The eval harness *scores* prompts; the improver helps you *write a better one*.
+Give it a raw, weak prompt (or a block of free text from an inbox / notes) and it:
+
+1. **Diagnoses** it against a rubric — explicit role, sufficient context, clear
+   task, output format/schema, constraints, examples, success criteria, and a
+   safety/refusal policy — marking each criterion `present` / `weak` / `missing`
+   with a note, plus an overall *readiness* score.
+2. **Rewrites** it into a structured prompt (Role / Context / Task / Output
+   format / Constraints / Success criteria / If you are unsure), injecting
+   checklist-driven scaffolding for whatever was missing while preserving your
+   actual instruction.
+3. **Explains** each change, tied back to the prompt-engineering principle (and
+   the library category) it comes from.
+
+The default rewriter is **deterministic and rule-based** — fully offline, no key,
+so it behaves reproducibly. If `ANTHROPIC_API_KEY` and `anthropic` are present it
+switches to an LLM rewrite via the catalogued
+[`prompt-improver`](prompts/rewriting/prompt-improver.prompt.md) meta-prompt; a
+banner makes the active backend obvious (mirroring the eval harness).
+
+```bash
+# Diagnose + rewrite a weak one-liner (rich output)
+python cli.py improve "pull out the contact details from this email"
+
+# Read the raw prompt from a file (e.g. something pasted from an inbox)
+python cli.py improve --file improver/examples/inbox-paste.txt
+
+# Print only the rewritten prompt (pipe it straight into a new .prompt.md)
+python cli.py improve "summarize this" --plain
+```
+
+**Before**
+
+```text
+pull out the contact details from this email
+```
+
+**After** (rule-based rewrite, abbreviated)
+
+```markdown
+# System prompt
+
+## Role
+You are a careful, domain-aware assistant. Adopt the expertise the task
+implies and hold a high bar for accuracy.
+
+## Task
+pull out the contact details from this email
+
+## Output format
+Respond in a single, clearly structured block. If the task implies discrete
+fields, return a JSON object with one key per field and no surrounding prose
+or markdown fences.
+
+## If you are unsure
+If the input is missing required information, is ambiguous, or asks for
+something you should not do, say so explicitly instead of guessing. Use null
+(or 'unknown') for fields you cannot determine from the input.
+```
+
+(The full output also fills in Context, Constraints, and Success criteria, and
+prints a diagnosis table plus a "what changed & why" rationale.)
+
 ## Repository layout
 
 ```text
 prompt-library/
-├── prompts/                 # the library (14 prompts, 7 categories)
+├── prompts/                 # the library (15 prompts, 7 categories)
 │   ├── role-prompts/
 │   ├── structured-output/
 │   ├── agent-and-chain/
 │   ├── extraction/          # contains the v1/v2 A/B pair
 │   ├── classification/
-│   ├── rewriting/
+│   ├── rewriting/           # incl. the prompt-improver meta-prompt
 │   ├── eval-rubrics/        # LLM-as-judge rubrics
 │   └── INDEX.md             # generated catalog (name/category/version/intent)
 ├── schemas/                 # JSON Schemas + matching pydantic models
@@ -121,8 +193,16 @@ prompt-library/
 │   ├── scorers.py           # exact / regex / json_schema / json_fields / keyword
 │   ├── run.py               # runner + rich scoreboard + A/B winner
 │   └── golden/              # golden inputs + expected behavior (YAML)
-├── tests/                   # pytest: scorers, harness, A/B logic, prompt structure
-├── cli.py                   # `index` / `list` / `evals`
+├── improver/                # the prompt improver (diagnose -> rewrite -> explain)
+│   ├── rubric.py            # the diagnostic criteria (declarative)
+│   ├── diagnose.py          # rule-based per-criterion detectors
+│   ├── rewrite.py           # deterministic rewriter + optional LLM path
+│   ├── improve.py           # orchestration; reuses evals.model backend selection
+│   ├── render.py            # rich diagnosis table + rewrite + rationale panels
+│   ├── cli.py               # the `improve` subcommand
+│   └── examples/            # weak prompts to try it on
+├── tests/                   # pytest: scorers, harness, A/B logic, prompt + improver
+├── cli.py                   # `index` / `list` / `evals` / `improve`
 ├── requirements.txt
 ├── IMPLEMENTATION_PLAN.md
 └── LICENSE

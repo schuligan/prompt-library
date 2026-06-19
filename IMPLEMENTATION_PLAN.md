@@ -11,7 +11,10 @@ It is written as the plan I'd hand to a reviewer before writing code.
 - Treat prompts as versioned artifacts with an explicit rationale.
 - Make prompt quality *measurable*: golden inputs + scorers + a scoreboard.
 - Demonstrate A/B prompt evaluation (variant vs variant) with a declared winner.
-- Run fully offline in CI — no API key, no network — via a deterministic mock.
+- Help *author* better prompts, not just score them: a diagnose→rewrite→explain
+  improver that turns a weak prompt into a structured one against the same rubric.
+- Run fully offline in CI — no API key, no network — via a deterministic mock /
+  rule-based path.
 - Stay small and dependency-light so a reviewer can read the whole thing.
 
 **Non-goals**
@@ -107,6 +110,39 @@ documents the *judge-side* protocol for pairwise comparison (including
 position-bias mitigation) for when you A/B with an LLM judge rather than
 deterministic scorers.
 
+## 3a. Prompt improver
+
+A complement to the eval harness: the harness *scores* prompts, the improver
+helps *write* a better one. It is a thin, transparent pipeline under `improver/`:
+
+1. **`rubric.py`** — the diagnostic criteria as declarative data: explicit role,
+   sufficient context, clear task, output format/schema, constraints, examples,
+   success criteria, safety/refusal. The set deliberately mirrors the techniques
+   the prompt library teaches, so diagnosis, library, and rewrite share one
+   vocabulary.
+2. **`diagnose.py`** — one transparent heuristic detector per criterion returning
+   `present` / `weak` / `missing` + a note, plus a 0..1 readiness score. Pattern/
+   keyword heuristics (not a model call) keep it deterministic and offline.
+3. **`rewrite.py`** — the default **rule-based** rewriter scaffolds a structured
+   prompt (Role / Context / Task / Output / Constraints / Success / Refusal),
+   preserving the user's instruction verbatim in Task and injecting checklist
+   defaults elsewhere. An optional `rewrite_with_llm` uses the catalogued
+   `prompt-improver` meta-prompt when a key is present.
+4. **`improve.py`** — orchestrates diagnose → rewrite → explain, and reuses
+   `evals.model.live_available` so the improver and harness agree on when a real
+   model is in play (DRY). The explanation diffs the gaps the rewrite closed,
+   each tied to its principle.
+5. **`render.py` / `cli.py`** — a rich banner + diagnosis table + rewrite panel +
+   rationale, and the `improve` subcommand (`improve "<text>"` / `--file` /
+   `--plain` / `--rule-based`).
+
+**Why rule-based as the default.** Same constraint as the harness: it must run
+offline and deterministically. A rule-based rewriter is honest about what it is —
+checklist-driven scaffolding, not a creative rewrite — and it is genuinely useful
+because the highest-value fixes for weak prompts (a refusal/null policy, an output
+spec, a primed role) are structural and don't need a model. The LLM path exists
+for a richer rewrite but is never required.
+
 ## 4. Trade-offs
 
 - **Mock vs live as default.** Chose mock-default for deterministic CI. Cost:
@@ -139,6 +175,11 @@ deterministic scorers.
   prompt structure; `cli.py index` generates `prompts/INDEX.md`.
 - **Phase 5 — docs.** README (hook, problem, Mermaid flow, quickstart, example
   scoreboard, About) and this plan.
+- **Phase 6 — prompt improver.** `improver/` package (rubric → diagnose →
+  rewrite → explain), the `improve` CLI subcommand, the catalogued
+  `prompt-improver` meta-prompt for the live path, example inputs, and tests
+  asserting the diagnosis flags a weak prompt's gaps and the rewrite emits every
+  required section — all offline.
 
 ## 6. Verification
 

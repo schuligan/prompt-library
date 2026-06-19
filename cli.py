@@ -4,6 +4,7 @@ Subcommands:
     python cli.py evals [tasks...]   # run the eval harness (mock by default)
     python cli.py index              # regenerate prompts/INDEX.md from frontmatter
     python cli.py list               # print the prompt catalog to stdout
+    python cli.py improve "<prompt>" # diagnose & rewrite a weak prompt (offline)
 """
 
 from __future__ import annotations
@@ -80,6 +81,10 @@ def main(argv: list[str] | None = None) -> int:
     p_eval.add_argument("--mock", action="store_true")
     p_eval.add_argument("--no-table", action="store_true")
     p_eval.set_defaults(func=cmd_evals)
+
+    from improver.cli import add_parser as add_improve_parser
+
+    add_improve_parser(sub)
 
     args = parser.parse_args(argv)
     return args.func(args)
